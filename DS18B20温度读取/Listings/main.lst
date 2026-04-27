@@ -1,0 +1,116 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              04/24/2026 23:05:45 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include "LCD1602.h"
+   3          #include "DS18B20.h"
+   4          #include "Delay.h"
+   5          #include <intrins.h>
+   6          
+   7          float T;
+   8          
+   9          void UART_Init(void)
+  10          {
+  11   1              SCON=0x50;              //8位数据，可变波特率，允许接收
+  12   1              TMOD&=0x0F;
+  13   1              TMOD|=0x20;             //定时器1模式2
+  14   1              TH1=0xFD;               //11.0592MHz下9600波特率
+  15   1              TL1=0xFD;
+  16   1              TR1=1;
+  17   1              TI=1;
+  18   1      }
+  19          
+  20          void UART_SendByte(unsigned char Byte)
+  21          {
+  22   1              SBUF=Byte;
+  23   1              while(TI==0);
+  24   1              TI=0;
+  25   1      }
+  26          
+  27          void UART_SendString(char *String)
+  28          {
+  29   1              while(*String)
+  30   1              {
+  31   2                      UART_SendByte(*String++);
+  32   2              }
+  33   1      }
+  34          
+  35          void UART_SendTemperature(float Temp)
+  36          {
+  37   1              unsigned int IntPart;
+  38   1              unsigned int DecPart;
+  39   1      
+  40   1              UART_SendString("Temp=");
+  41   1              if(Temp<0)
+  42   1              {
+  43   2                      UART_SendByte('-');
+  44   2                      Temp=-Temp;
+  45   2              }
+  46   1              else
+  47   1              {
+  48   2                      UART_SendByte('+');
+  49   2              }
+  50   1      
+  51   1              IntPart=(unsigned int)Temp;
+  52   1              DecPart=(unsigned int)(Temp*10000)%10000;
+  53   1      
+  54   1              UART_SendByte(IntPart/100+'0');
+C51 COMPILER V9.57.0.0   MAIN                                                              04/24/2026 23:05:45 PAGE 2   
+
+  55   1              UART_SendByte(IntPart/10%10+'0');
+  56   1              UART_SendByte(IntPart%10+'0');
+  57   1              UART_SendByte('.');
+  58   1              UART_SendByte(DecPart/1000+'0');
+  59   1              UART_SendByte(DecPart/100%10+'0');
+  60   1              UART_SendByte(DecPart/10%10+'0');
+  61   1              UART_SendByte(DecPart%10+'0');
+  62   1              UART_SendString(" C\r\n");
+  63   1      }
+  64          
+  65          void main()
+  66          {
+  67   1              UART_Init();
+  68   1              LCD_Init();
+  69   1              LCD_ShowString(1,1,"Temperature:");
+  70   1              while(1)
+  71   1              {
+  72   2                      DS18B20_ConvertT();     //启动温度转换
+  73   2                      Delay(1000);            //等待转换完成，避免读到旧值
+  74   2                      T=DS18B20_ReadT();      //读取温度
+  75   2                      UART_SendTemperature(T);
+  76   2                      if(T<0)                         //如果温度小于0
+  77   2                      {
+  78   3                              LCD_ShowChar(2,1,'-');  //显示负号
+  79   3                              T=-T;                   //将温度变为正数
+  80   3                      }
+  81   2                      else                            //如果温度大于等于0
+  82   2                      {
+  83   3                              LCD_ShowChar(2,1,'+');  //显示正号
+  84   3                      }
+  85   2                      LCD_ShowNum(2,2,T,3);           //显示温度整数部分
+  86   2                      LCD_ShowChar(2,5,'.');          //显示小数点
+  87   2                      LCD_ShowNum(2,6,(unsigned long)(T*10000)%10000,4);//显示温度小数部分
+  88   2              }
+  89   1      }
+  90          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    463    ----
+   CONSTANT SIZE    =     24    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4       9
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
